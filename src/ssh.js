@@ -49,13 +49,11 @@ module.exports = {
         'no tar binary found on remote server; please make sure it is installed for the action to work'
       )
 
-    console.log(core.getBooleanInput('keep_archive'))
-
     if (
       (
         await this.ssh.execCommand(
           `tar zxvf ${this.destination} --strip-components=1 && ${
-            core.getBooleanInput('keep_archive')
+            core.getInput('keep_archive')
               ? `mv -v ${this.destination} ..`
               : `rm -v ${this.destination}`
           }`,
