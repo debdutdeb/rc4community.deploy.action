@@ -72,7 +72,7 @@ module.exports = {
   },
 
   async run() {
-    Object.defineProperty(this, 'destinationDir', path.dirname(this.destination))
+    Object.defineProperty(this, 'destinationDir', {value: path.dirname(this.destination)})
     try {
       await this.ssh.connect(this.sshConfig)
       core.info('connected to remote host ..')
