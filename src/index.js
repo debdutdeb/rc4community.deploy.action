@@ -1,7 +1,5 @@
-import {sshClient} from './ssh'
-
 const main = async () => {
-  await sshClient.run()
+  await require('./ssh').run()
 }
 
 main()
