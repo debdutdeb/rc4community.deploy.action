@@ -53,7 +53,7 @@ module.exports = {
       (
         await this.ssh.execCommand(
           `tar zxvf ${this.destination} --strip-components=1 && ${
-            core.getInput('keep_archive')
+            core.getInput('keep_archive') === 'true'
               ? `mv -v ${this.destination} ..`
               : `rm -v ${this.destination}`
           }`,
