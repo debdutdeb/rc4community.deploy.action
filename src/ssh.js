@@ -3,7 +3,7 @@ const core = require('@actions/core')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 
-const sshClient = {
+module.exports = {
   sshConfig: {
     host: core.getInput('remote_host'),
     port: core.getInput('remote_host_port') || 22,
@@ -11,72 +11,87 @@ const sshClient = {
     privateKey: core.getInput('ssh_private_key')
   },
 
-  async verifySourceLoc(source) {
-    try {
-      await fs.access(source)
-    } catch (e) {
-      core.setFailed(`source file not found; ${e.message}`)
-    }
-  },
+  source: core.getInput('source'),
 
-  async verifyRemoteFsLoc(remoteLoc) {
-    // prettier-ignore
-    if (!this.ssh.isConnected())
-      await this.connect()
-
-    const dirName = remoteLoc.endsWith('/')
-      ? remoteLoc
-      : path.basename(remoteLoc)
-    try {
-      /**
-       * create the directory if it doesn't exist
-       */
-      await this.ssh.execCommand(`mkdir -pv ${dirName}`, {
-        cwd:
-          this.sshConfig.username === 'root'
-            ? `/root`
-            : `/home/${this.sshConfig.username}`,
-        onStdout(chunk) {
-          core.info(chunk.toString('utf-8'))
-        },
-        onStderr() {
-          core.error(chunk.toString('utf8'))
-        }
-      })
-    } catch (e) {
-      core.setFailed(e.message)
-    }
-  },
+  destination: (() => {
+    const s = core.getInput('source')
+    const d = core.getInput('destination')
+    return d.endsWith('/') ? path.join(d, path.basename(s)) : d
+  })(),
 
   ssh: new NodeSSH(),
 
-  async connect() {
-    try {
-      await this.ssh.connect(this.sshConfig)
-    } catch (e) {
-      core.setFailed(e.message)
-    }
+  /* prettier-ignore */
+  async connect() { await this.ssh.connect(this.sshConfig) },
+
+  /* prettier-ignore */
+  async verifySourceExists() { await fs.access(this.source) },
+
+  async confirmRemoteLocExists() {
+    if (
+      (
+        await this.ssh.execCommand(`mkdir -pv ${this.destinationDir}`, {
+          cwd: this.sshConfig.username === 'root' ? '/root' : `/home/${this.sshConfig.username}`,
+          // prettier-ignore
+          ...{
+            onStdout(c) { console.log(c.toString('utf-8')) },
+            onStderr(c) { console.log(c.toString('utf-8')) }
+          }
+        })
+      ).code
+    )
+      throw new Error('failed to  create destination directory on remote server')
   },
 
-  async sendFile(source, destination) {
-    try {
-      await this.ssh.putFile(source, destination, null)
-    } catch (e) {
-      core.setFailed(`failed to send archive; ${e.message}`)
-    }
+  async remoteExtract() {
+    if (!(await this.ssh.exec('which', ['tar'], {stream: 'stdout'})).length)
+      throw new Error(
+        'no tar binary found on remote server; please make sure it is installed for the action to work'
+      )
+
+    if (
+      (
+        await this.ssh.execCommand(
+          `tar zxvf ${this.destination} --strip-components=1 && ${
+            core.getBooleanInput('keep_archive')
+              ? `mv -v ${this.destination} ..`
+              : `rm -v ${this.destination}`
+          }`,
+          {
+            cwd: this.destinationDir,
+            /* prettier-ignore */
+            ...{
+            onStdout(c) {console.log(c.toString('utf8'))},
+            onStderr(c) {console.log(c.toString('utf8'))}
+          }
+          }
+        )
+      ).code !== 0
+    )
+      throw new Error('archive extract failed')
   },
 
   async run() {
-    await this.connect()
+    Object.defineProperty(this, 'destinationDir', path.dirname(this.destination))
+    try {
+      await this.ssh.connect(this.sshConfig)
+      core.info('connected to remote host ..')
 
-    const source = core.getInput('source')
-    await this.verifySourceLoc(source)
+      core.debug(`source file: ${this.source}, destination: ${this.destination}`)
+      // am i alright papa?
+      await this.verifySourceExists()
+      await this.confirmRemoteLocExists()
 
-    const dest = core.getInput('destination')
-    await this.verifyRemoteFsLoc(dest)
+      await this.ssh.putFile(this.source, this.destination)
+      core.info(`file ${path.basename(this.source)} sent successfully`)
 
-    await this.sendFile(source, dest)
+      await this.remoteExtract()
+      core.info('archive successfully extracted and deleted')
+    } catch (e) {
+      core.setFailed(e)
+      process.abort()
+    }
+
+    this.ssh.dispose()
   }
 }
-
-module.exports = {sshClient}

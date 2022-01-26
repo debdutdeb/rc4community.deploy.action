@@ -22,7 +22,7 @@ inputs:
     required: true
 
   destination:
-    description: 'Destination directory'
+    description: 'Destination directory for archive extraction'
     required: true
 
 runs:
