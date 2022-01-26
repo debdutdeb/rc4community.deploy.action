@@ -1,6 +1,7 @@
 const {NodeSSH} = require('node-ssh')
 const core = require('@actions/core')
 const fs = require('node:fs/promises')
+const {F_OK} = require('node:fs').constants
 const path = require('node:path')
 
 module.exports = {
@@ -16,16 +17,18 @@ module.exports = {
   destination: (() => {
     const s = core.getInput('source')
     const d = core.getInput('destination')
+    /**
+     * if path is a directory, append source file name
+     * else return d
+     * putFile needs absolute path of the destination, including the filename, thus this sadness
+     */
     return d.endsWith('/') ? path.join(d, path.basename(s)) : d
   })(),
 
   ssh: new NodeSSH(),
 
   /* prettier-ignore */
-  async connect() { await this.ssh.connect(this.sshConfig) },
-
-  /* prettier-ignore */
-  async verifySourceExists() { await fs.access(this.source) },
+  async verifySourceExists() { await fs.access(this.source, F_OK) },
 
   async confirmRemoteLocExists() {
     if (
