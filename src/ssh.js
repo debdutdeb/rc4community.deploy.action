@@ -79,4 +79,4 @@ const sshClient = {
   }
 }
 
-export {sshClient}
+module.exports = {sshClient}
