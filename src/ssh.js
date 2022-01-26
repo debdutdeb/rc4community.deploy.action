@@ -64,12 +64,12 @@ module.exports = {
             cwd: this.destinationDir,
             /* prettier-ignore */
             ...{
-            onStdout(c) {console.log(c.toString('utf8'))},
-            onStderr(c) {console.log(c.toString('utf8'))}
-          }
+              onStdout(c) {console.log(c.toString('utf8'))},
+              onStderr(c) {console.log(c.toString('utf8'))}
+            }
           }
         )
-      ).code !== 0
+      ).code
     )
       throw new Error('archive extract failed')
   },
