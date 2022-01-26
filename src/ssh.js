@@ -49,6 +49,8 @@ module.exports = {
         'no tar binary found on remote server; please make sure it is installed for the action to work'
       )
 
+    console.log(core.getBooleanInput('keep_archive'))
+
     if (
       (
         await this.ssh.execCommand(
