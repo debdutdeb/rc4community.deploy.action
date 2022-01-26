@@ -1,0 +1,23 @@
+{
+  "name": "rc4community.deploy.action",
+  "version": "0.0.1",
+  "description": "Action for deploying rc4community builds to an nginx server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"this is a test command\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/debdutdeb/rc4community.deploy.action.git"
+  },
+  "author": "Debdut Chakraborty",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/debdutdeb/rc4community.deploy.action/issues"
+  },
+  "homepage": "https://github.com/debdutdeb/rc4community.deploy.action#readme",
+  "dependencies": {
+    "@actions/core": "^1.6.0",
+    "node-ssh": "^12.0.3"
+  }
+}

@@ -1,0 +1,30 @@
+name: 'RC4Community Deploy'
+description: 'Deploy rc4community builds to an nginx server'
+inputs:
+  remote_host:
+    description: 'Remote hostname'
+    required: true
+
+  remote_host_port:
+    description: 'Remote host port'
+    required: false
+
+  ssh_private_key:
+    description: 'SSH private key (unlocked)'
+    required: false
+
+  remote_user:
+    description: 'Remote server ssh login username'
+    required: false
+
+  source:
+    description: 'Source file path'
+    required: true
+
+  destination:
+    description: 'Destination directory'
+    required: true
+
+runs:
+  using: 'node16'
+  main: 'src/index.js'
