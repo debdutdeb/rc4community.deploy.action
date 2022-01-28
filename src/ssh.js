@@ -31,19 +31,13 @@ module.exports = {
   async verifySourceExists() { await fs.access(this.source, F_OK) },
 
   async confirmRemoteLocExists() {
-    if (
-      (
-        await this.ssh.execCommand(`mkdir -pv ${this.destinationDir}`, {
-          cwd: this.sshConfig.username === 'root' ? '/root' : `/home/${this.sshConfig.username}`,
-          // prettier-ignore
-          ...{
-            onStdout(c) { console.log(c.toString('utf-8')) },
-            onStderr(c) { console.log(c.toString('utf-8')) }
-          }
-        })
-      ).code
-    )
-      throw new Error('failed to  create destination directory on remote server')
+    const {code} = await this.ssh.execCommand(`mkdir -pv ${this.destinationDir}`, {
+      cwd: this.sshConfig.username === 'root' ? '/root' : `/home/${this.sshConfig.username}`,
+      onStdout = c => console.log(c.toString('utf-8')),
+      onStderr = c => console.log(c.toString('utf-8'))
+    })
+
+    if (code) throw new Error('failed to  create destination directory on remote server')
   },
 
   async remoteExtract() {
@@ -52,26 +46,16 @@ module.exports = {
         'no tar binary found on remote server; please make sure it is installed for the action to work'
       )
 
-    if (
-      (
-        await this.ssh.execCommand(
-          `tar zxvf ${this.destination} --strip-components=1 && ${
-            core.getInput('keep_archive') === 'true'
-              ? `mv -v ${this.destination} ..`
-              : `rm -v ${this.destination}`
-          }`,
-          {
-            cwd: this.destinationDir,
-            /* prettier-ignore */
-            ...{
-              onStdout(c) {console.log(c.toString('utf8'))},
-              onStderr(c) {console.log(c.toString('utf8'))}
-            }
-          }
-        )
-      ).code
-    )
-      throw new Error('archive extract failed')
+    const e = `tar zxvf ${this.destination}`
+    const k = core.getInput('keep_archive') === true ? `mv -v ${this.destination} ..` : `rm -vf ${this.destination}`
+
+    const {code} = await this.ssh.execCommand(`${e} && ${k}`, {
+      cwd: this.destinationDir,
+      onStdout = c => console.log(c.toString('utf8')),
+      onStderr = c => console.log(c.toString('utf8'))
+    })
+
+    if (code) throw new Error('archive extract failed')
   },
 
   async run() {
