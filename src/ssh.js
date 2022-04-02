@@ -93,7 +93,7 @@ module.exports = class {
       core.info(`source file: ${this.source}, destination: ${this.destination}`)
       // am i alright papa?
       // await this.verifySourceExists()
-      await this.confirmRemoteLocExists()
+      // await this.confirmRemoteLocExists()
 
       await this.ssh.putFile(this.source, this.destination)
       core.info(`file ${path.basename(this.source)} sent successfully`)
