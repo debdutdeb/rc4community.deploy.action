@@ -5,13 +5,13 @@ inputs:
     description: 'Remote hostname'
     required: true
 
-  remote_host_port:
-    description: 'Remote host port'
+  remote_port:
+    description: 'Remote port'
     required: false
 
   ssh_private_key:
     description: 'SSH private key (unlocked)'
-    required: false
+    required: true
 
   remote_user:
     description: 'Remote server ssh login username'
@@ -21,8 +21,8 @@ inputs:
     description: 'Source file path'
     required: true
 
-  destination:
-    description: 'Destination directory for archive extraction'
+  target:
+    description: 'Destination directory or file path for archive extraction'
     required: true
 
 runs:

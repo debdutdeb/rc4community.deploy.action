@@ -7,27 +7,27 @@ const path = require('node:path')
 module.exports = class {
   constructor() {
     this.sshConfig = {
-      host: core.getInput('remote_host'),
-      port: core.getInput('remote_host_port') || 22,
-      username: core.getInput('remote_user') || 'root',
-      privateKey: core.getInput('ssh_private_key')
+      host: process.env.REMOTE_HOST || core.getInput('remote_host'),
+      port: process.env.REMOTE_PORT || core.getInput('remote_port') || 22,
+      username: process.env.REMOTE_USER || core.getInput('remote_user') || 'root',
+      privateKey: process.env.SSH_PRIVATE_KEY || core.getInput('ssh_private_key')
     }
-    this.source = core.getInput('source')
-    this.destination = core.getInput('destination')
+    this.source = process.env.SOURCE || core.getInput('source')
+    this.destination = process.env.TARGET || core.getInput('target')
     this.ssh = new NodeSSH()
   }
 
   async init() {
     if (!this.destination.startsWith('/')) {
       // oh no
-      const home = await this.ssh.exec('printf $HOME', {stream: 'stdout'})
+      const home = await this.ssh.exec('sh', ['-c', 'printf $HOME'], {stream: 'stdout'})
       if (!home) throw new Error('failed to get remote HOME')
       this.destination = path.join(home, this.destination)
     }
 
     if (
       this.destination.endsWith('/') ||
-      (await this.exec(`test -d ${this.destination}`)).code === 0
+      (await this.exec(`sh -c 'test -d ${this.destination}'`)) === 0
     ) {
       this.destinationDir = this.destination
       this.destination = path.join(this.destination, path.basename(this.source))
@@ -66,16 +66,17 @@ module.exports = class {
 
     const extractCommand = `tar zxvf ${this.destination}`
 
-    const keepArchive = core.getInput('keep_archive')
-      ? `mv -v ${this.destination} ${this.destination}-${new Date().toString()}`
-      : `rm -vf ${this.destination}`
+    const keepArchive =
+      process.env.KEEP_ARCHIVE || core.getInput('keep_archive')
+        ? `mv -v ${this.destination} ${this.destination}-${new Date().toString()}`
+        : `rm -vf ${this.destination}`
 
     if (await this.exec(`${extractCommand} && ${keepArchive}`))
       throw new Error('archive extract failed')
   }
 
   async startService() {
-    const installPossibleNewDeps = 'npm install --production'
+    const installPossibleNewDeps = 'npm install --production --force'
     const startPm2ServiceThingy = 'pm2 reload ecosystem.config.js'
     if (await this.exec(`${installPossibleNewDeps} && ${startPm2ServiceThingy}`))
       throw new Error('deployment failed')
