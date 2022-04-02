@@ -1,5 +1,5 @@
 const main = async () => {
-  await require('./ssh').run()
+  await (new (require('./ssh'))()).run()
 }
 
 main()

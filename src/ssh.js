@@ -4,55 +4,62 @@ const fs = require('node:fs/promises')
 const {F_OK} = require('node:fs').constants
 const path = require('node:path')
 
-module.exports = {
-  sshConfig: {
-    host: core.getInput('remote_host'),
-    port: core.getInput('remote_host_port') || 22,
-    username: core.getInput('remote_user') || 'root',
-    privateKey: core.getInput('ssh_private_key')
-  },
+module.exports = class {
+  constructor() {
+    this.sshConfig = {
+      host: core.getInput('remote_host'),
+      port: core.getInput('remote_host_port') || 22,
+      username: core.getInput('remote_user') || 'root',
+      privateKey: core.getInput('ssh_private_key')
+    }
+    this.source = core.getInput('source')
+    this.destination = core.getInput('destination')
+    this.ssh = new NodeSSH()
+  }
 
-  source: core.getInput('source'),
+  async init() {
+    if (!this.destination.startsWith('/')) {
+      // oh no
+      const home = await this.ssh.exec('printf $HOME', {stream: 'stdout'})
+      if (!home) throw new Error('failed to get remote HOME')
+      this.destination = path.join(home, this.destination)
+    }
 
-  destination: (() => {
-    const d = core.getInput('destination')
-    /**
-     * if path is a directory, append source file name
-     * else return d
-     * putFile needs absolute path of the destination, including the filename, thus this sadness
-     */
-    return d.endsWith('/') ? path.join(d, path.basename(core.getInput('source'))) : d
-  })(),
+    if (
+      this.destination.endsWith('/') ||
+      (await this.exec(`test -d ${this.destination}`)).code === 0
+    ) {
+      this.destinationDir = this.destination
+      this.destination = path.join(this.destination, path.basename(this.source))
+      return
+    }
 
-  ssh: new NodeSSH(),
+    this.destinationDir = path.dirname(this.destination)
+  }
 
   /* prettier-ignore */
-  async verifySourceExists() { await fs.access(this.source, F_OK) },
+  async verifySourceExists() { await fs.access(this.source, F_OK) }
 
   async exec(cmd, execOptions) {
     execOptions = {
       /* prettier-ignore */
-      onStdout(c) { console.log(c.toString('utf-8')) },
+      onStdout(c) { process.stdout.write(c.toString('utf-8')) },
       /* prettier-ignore */
-      onStderr(c) { console.log(c.toString('utf-8')) },
+      onStderr(c) { process.stderr.write(c.toString('utf-8')) },
       cwd: this.destinationDir,
       ...execOptions
     }
     const {code} = await this.ssh.execCommand(cmd, execOptions)
     return code
-  },
+  }
 
   async confirmRemoteLocExists() {
-    let cwd = null
-    if (!this.destinationDir.startsWith('/'))
-      cwd = this.sshConfig.username === 'root' ? '/root' : `/home/${this.sshConfig.username}`
-
-    if (await this.exec(`mkdir -pv ${this.destinationDir}`, {cwd}))
+    if (await this.exec(`mkdir -pv ${this.destinationDir}`, {cwd: '/'}))
       throw new Error('failed to  create destination directory on remote server')
-  },
+  }
 
   async remoteExtract() {
-    if (!await this.ssh.exec('which', ['tar'], {stream: 'stdout'}))
+    if (!(await this.ssh.exec('which', ['tar'], {stream: 'stdout'})))
       throw new Error(
         'no tar binary found on remote server; please make sure it is installed for the action to work'
       )
@@ -65,20 +72,22 @@ module.exports = {
 
     if (await this.exec(`${extractCommand} && ${keepArchive}`))
       throw new Error('archive extract failed')
-  },
+  }
 
   async startService() {
     const installPossibleNewDeps = 'npm install --production'
     const startPm2ServiceThingy = 'pm2 reload ecosystem.config.js'
     if (await this.exec(`${installPossibleNewDeps} && ${startPm2ServiceThingy}`))
       throw new Error('deployment failed')
-  },
+  }
 
   async run() {
-    Object.defineProperty(this, 'destinationDir', {value: path.dirname(this.destination)})
     try {
       await this.ssh.connect(this.sshConfig)
       core.info('connected to remote host ..')
+
+      await this.init()
+      core.info('initialization complete')
 
       core.debug(`source file: ${this.source}, destination: ${this.destination}`)
       // am i alright papa?
