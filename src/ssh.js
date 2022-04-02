@@ -30,7 +30,7 @@ module.exports = {
   async verifySourceExists() { await fs.access(this.source, F_OK) },
 
   async exec(cmd, execOptions) {
-    const execOptions = {
+    execOptions = {
       /* prettier-ignore */
       onStdout(c) { console.log(c.toString('utf-8')) },
       /* prettier-ignore */
@@ -38,7 +38,7 @@ module.exports = {
       cwd: this.destinationDir,
       ...execOptions
     }
-    const {code} = await this.ssh.execCommand(cmd.execOptions)
+    const {code} = await this.ssh.execCommand(cmd, execOptions)
     return code
   },
 
