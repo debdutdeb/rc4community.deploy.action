@@ -33,8 +33,8 @@ module.exports = {
   async confirmRemoteLocExists() {
     const {code} = await this.ssh.execCommand(`mkdir -pv ${this.destinationDir}`, {
       cwd: this.sshConfig.username === 'root' ? '/root' : `/home/${this.sshConfig.username}`,
-      onStdout = c => console.log(c.toString('utf-8')),
-      onStderr = c => console.log(c.toString('utf-8'))
+      onStdout: c => console.log(c.toString('utf-8')),
+      onStderr: c => console.log(c.toString('utf-8'))
     })
 
     if (code) throw new Error('failed to  create destination directory on remote server')
@@ -47,12 +47,15 @@ module.exports = {
       )
 
     const e = `tar zxvf ${this.destination}`
-    const k = core.getInput('keep_archive') === true ? `mv -v ${this.destination} ..` : `rm -vf ${this.destination}`
+    const k =
+      core.getInput('keep_archive') === true
+        ? `mv -v ${this.destination} ..`
+        : `rm -vf ${this.destination}`
 
     const {code} = await this.ssh.execCommand(`${e} && ${k}`, {
       cwd: this.destinationDir,
-      onStdout = c => console.log(c.toString('utf8')),
-      onStderr = c => console.log(c.toString('utf8'))
+      onStdout: c => console.log(c.toString('utf8')),
+      onStderr: c => console.log(c.toString('utf8'))
     })
 
     if (code) throw new Error('archive extract failed')
