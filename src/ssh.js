@@ -52,7 +52,7 @@ module.exports = {
   },
 
   async remoteExtract() {
-    if (await this.ssh.exec('which', ['tar'], {stream: 'stdout'}))
+    if (!await this.ssh.exec('which', ['tar'], {stream: 'stdout'}))
       throw new Error(
         'no tar binary found on remote server; please make sure it is installed for the action to work'
       )
