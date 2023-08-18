@@ -76,9 +76,10 @@ module.exports = class {
   }
 
   async startService() {
+    const uninstallNodeModules = `rm -rf node_modules`
     const installPossibleNewDeps = 'npm install --production --force'
     const startPm2ServiceThingy = 'pm2 reload ecosystem.config.js'
-    if (await this.exec(`${installPossibleNewDeps} && ${startPm2ServiceThingy}`))
+    if (await this.exec(`${uninstallNodeModules} && ${installPossibleNewDeps} && ${startPm2ServiceThingy}`))
       throw new Error('deployment failed')
   }
 
